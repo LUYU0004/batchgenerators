@@ -97,7 +97,7 @@ class RandomCropTransform(AbstractTransform):
 
 
 class PadTransform(AbstractTransform):
-    def __init__(self, new_size, pad_mode_data='constant', pad_mode_seg='constant',
+    def __init__(self, new_size, pad_mode_data='constant', pad_mode_seg='contant', must_be_divisible_by=None,
                  np_pad_kwargs_data=None, np_pad_kwargs_seg=None,
                  data_key="data", label_key="seg"):
         """
@@ -120,16 +120,16 @@ class PadTransform(AbstractTransform):
             np_pad_kwargs_seg = {}
         self.np_pad_kwargs_data = np_pad_kwargs_data
         self.np_pad_kwargs_seg = np_pad_kwargs_seg
+        self.must_be_divisible_by = must_be_divisible_by
 
-        assert isinstance(self.new_size, (tuple, list, np.ndarray)), "new_size must be tuple, list or np.ndarray"
+        #assert isinstance(self.new_size, (tuple, list, np.ndarray)), "new_size must be tuple, list or np.ndarray"
 
     def __call__(self, **data_dict):
         data = data_dict.get(self.data_key)
         seg = data_dict.get(self.label_key)
 
-        assert len(self.new_size) + 2 == len(data.shape), "new size must be a tuple/list/np.ndarray with shape " \
-                                                    "(x, y(, z))"
-        data, seg = pad_nd_image_and_seg(data, seg, self.new_size, None,
+        #assert len(self.new_size) + 2 == len(data.shape), "new size must be a tuple/list/np.ndarray with shape (x, y(, z))"
+        data, seg = pad_nd_image_and_seg(data, seg, self.new_size, must_be_divisible_by=self.must_be_divisible_by,
                                          np_pad_kwargs_data=self.np_pad_kwargs_data,
                                          np_pad_kwargs_seg=self.np_pad_kwargs_seg,
                                          pad_mode_data=self.pad_mode_data,
@@ -140,4 +140,3 @@ class PadTransform(AbstractTransform):
             data_dict[self.label_key] = seg
 
         return data_dict
-
