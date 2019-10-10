@@ -25,6 +25,7 @@ from batchgenerators.augmentations.utils import create_zero_centered_coordinate_
     elastic_deform_coordinates_2
 from batchgenerators.augmentations.crop_and_pad_augmentations import random_crop as random_crop_aug
 from batchgenerators.augmentations.crop_and_pad_augmentations import center_crop as center_crop_aug
+from batchgenerators.augmentations.crop_and_pad_augmentations import crop, get_lbls_for_roi_crop
 
 
 def augment_rot90(sample_data, sample_seg, num_rot=(1, 2, 3), axes=(0, 1, 2)):
@@ -191,7 +192,7 @@ def augment_spatial(data, seg, patch_size, patch_center_dist_from_border=30,
                     do_elastic_deform=True, alpha=(0., 1000.), sigma=(10., 13.),
                     do_rotation=True, angle_x=(0, 2 * np.pi), angle_y=(0, 2 * np.pi), angle_z=(0, 2 * np.pi),
                     do_scale=True, scale=(0.75, 1.25), border_mode_data='nearest', border_cval_data=0, order_data=3,
-                    border_mode_seg='constant', border_cval_seg=0, order_seg=0, random_crop=True, p_el_per_sample=1,
+                    border_mode_seg='constant', border_cval_seg=0, order_seg=0, crop_mode='random', p_el_per_sample=1,
                     p_scale_per_sample=1, p_rot_per_sample=1):
     dim = len(patch_size)
     seg_result = None
@@ -250,12 +251,18 @@ def augment_spatial(data, seg, patch_size, patch_center_dist_from_border=30,
 
         # now find a nice center location
         if modified_coords:
+            if crop_mode=='roi':
+                    lbs = get_lbls_for_roi_crop(patch_size, data.shape, seg[sample_id,0])
+
             for d in range(dim):
-                if random_crop:
+                if crop_mode=='roi':
+                    ctr = int(lbs[d] + np.round(patch_size[d] / 2.))
+                elif crop_mode=='center':
+                    ctr = int(np.round(data.shape[d + 2] / 2.))
+                else:
                     ctr = np.random.uniform(patch_center_dist_from_border[d],
                                             data.shape[d + 2] - patch_center_dist_from_border[d])
-                else:
-                    ctr = int(np.round(data.shape[d + 2] / 2.))
+                    
                 coords[d] += ctr
             for channel_id in range(data.shape[1]):
                 data_result[sample_id, channel_id] = interpolate_img(data[sample_id, channel_id], coords, order_data,
@@ -269,14 +276,19 @@ def augment_spatial(data, seg, patch_size, patch_center_dist_from_border=30,
                 s = None
             else:
                 s = seg[sample_id:sample_id + 1]
-            if random_crop:
+
+            if crop_mode == 'roi':
+                d, s = crop(data[sample_id:sample_id + 1], s,patch_size,crop_type='roi')
+            elif crop_mode ==  'center':
+                d, s = center_crop_aug(data[sample_id:sample_id + 1], patch_size, s)
+            else: #crop_mode ==  'random'
                 margin = [patch_center_dist_from_border[d] - patch_size[d] // 2 for d in range(dim)]
                 d, s = random_crop_aug(data[sample_id:sample_id + 1], s, patch_size, margin)
-            else:
-                d, s = center_crop_aug(data[sample_id:sample_id + 1], patch_size, s)
+
             data_result[sample_id] = d[0]
             if seg is not None:
                 seg_result[sample_id] = s[0]
+                
     return data_result, seg_result
 
 

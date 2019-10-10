@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 
-from batchgenerators.augmentations.spatial_transformations import augment_rot90, augment_resize, augment_transpose_axes
+from batchgenerators.augmentations.spatial_transformations import augment_rot90, augment_resize, augment_transpose_axes, augment_spatial
 
 
 class AugmentTransposeAxes(unittest.TestCase):
@@ -124,6 +124,30 @@ class AugmentRot90(unittest.TestCase):
                 tmp += 1
         self.assertAlmostEqual(tmp, n_iter / 2., delta=20)
 
+    def test_spatial_transform(self):
+        img = np.zeros((1,3,10,10,10))
+        img[:,:, 2:4, 2:4, 2:4] = 1
+
+        lbl = np.zeros((10,10,10))
+        lbl[ 2:4, 2:4, 2:4] = 1
+        crop_size = (10,10,10)
+        lbl = np.expand_dims(np.expand_dims(lbl, axis=0), axis=0)
+
+        for _ in range(10):
+            img_ret, lbl_ret  = augment_spatial(img, lbl, crop_size, patch_center_dist_from_border=30,
+                    do_elastic_deform=False, alpha=(0., 1000.), sigma=(10., 13.),
+                    do_rotation=False, angle_x=(0, 2 * np.pi), angle_y=(0, 2 * np.pi), angle_z=(0, 2 * np.pi),
+                    do_scale=False, scale=(1, 1.25), border_mode_data='nearest', border_cval_data=0, order_data=3,
+                    border_mode_seg='constant', border_cval_seg=0, order_seg=0, crop_mode='roi', p_el_per_sample=1,
+                    p_scale_per_sample=1, p_rot_per_sample=1)
+            img_sum = np.sum(img)
+            lbl_sum = np.sum(lbl)
+            print(img_sum , ' ' ,np.sum(img_ret))
+            print(lbl_sum , ' ' ,np.sum(lbl_ret))
+            print(lbl_ret[0,0,2])
+            assert(img_sum == 3 * lbl_sum)
+            #assert (abs(img_sum - np.sum(img_ret)) < 2)
+            #assert(abs(lbl_sum - np.sum(lbl_ret)) < 2)
 
 if __name__ == '__main__':
     unittest.main()
