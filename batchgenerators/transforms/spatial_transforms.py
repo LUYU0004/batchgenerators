@@ -289,7 +289,7 @@ class SpatialTransform(AbstractTransform):
         If !=0 then you will have to round to int and also beware of interpolation artifacts if you have more then
         labels 0 and 1. (for example if you have [0, 0, 0, 2, 2, 1, 0] the neighboring [0, 0, 2] bay result in [0, 1, 2])
 
-        random_crop: True: do a random crop of size patch_size and minimal distance to border of
+        crop_mode: if 'random': do a random crop of size patch_size and minimal distance to border of
         patch_center_dist_from_border. False: do a center crop of size patch_size
     """
 
@@ -297,7 +297,7 @@ class SpatialTransform(AbstractTransform):
                  do_elastic_deform=True, alpha=(0., 1000.), sigma=(10., 13.),
                  do_rotation=True, angle_x=(0, 2 * np.pi), angle_y=(0, 2 * np.pi), angle_z=(0, 2 * np.pi),
                  do_scale=True, scale=(0.75, 1.25), border_mode_data='nearest', border_cval_data=0, order_data=3,
-                 border_mode_seg='constant', border_cval_seg=0, order_seg=0, random_crop=True, data_key="data",
+                 border_mode_seg='constant', border_cval_seg=0, order_seg=0, crop_mode='random', data_key="data",
                  label_key="seg", p_el_per_sample=1, p_scale_per_sample=1, p_rot_per_sample=1):
         self.p_rot_per_sample = p_rot_per_sample
         self.p_scale_per_sample = p_scale_per_sample
@@ -321,7 +321,7 @@ class SpatialTransform(AbstractTransform):
         self.border_mode_seg = border_mode_seg
         self.border_cval_seg = border_cval_seg
         self.order_seg = order_seg
-        self.random_crop = random_crop
+        self.crop_mode=crop_mode
 
     def __call__(self, **data_dict):
         data = data_dict.get(self.data_key)
@@ -345,7 +345,7 @@ class SpatialTransform(AbstractTransform):
                                   border_mode_data=self.border_mode_data,
                                   border_cval_data=self.border_cval_data, order_data=self.order_data,
                                   border_mode_seg=self.border_mode_seg, border_cval_seg=self.border_cval_seg,
-                                  order_seg=self.order_seg, random_crop=self.random_crop,
+                                  order_seg=self.order_seg, crop_mode='random',
                                   p_el_per_sample=self.p_el_per_sample, p_scale_per_sample=self.p_scale_per_sample,
                                   p_rot_per_sample=self.p_rot_per_sample)
 
