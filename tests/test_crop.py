@@ -465,6 +465,29 @@ class TestCrop(unittest.TestCase):
 
         assert len(np.unique(sums)) == 50
 
+        
+    
+    def test_crop_roi(self):
+
+        img = np.zeros((1,3,10,10,10))
+        img[:,:, 2:4, 2:4, 2:4] = 1
+
+        lbl = np.zeros((10,10,10))
+        lbl[ 2:4, 2:4, 2:4] = 1
+        crop_size = (5,5,5)
+        lbl = np.expand_dims(np.expand_dims(lbl, axis=0), axis=0)
+
+        for i in range(10):
+            img_ret, lbl_ret = crop(img,lbl, crop_size, crop_type='roi')
+            img_sum = np.sum(img)
+            lbl_sum = np.sum(lbl)
+            assert(img_sum == 3 * lbl_sum)
+            assert(img_sum == np.sum(img_ret))
+            assert(lbl_sum == np.sum(lbl_ret))
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

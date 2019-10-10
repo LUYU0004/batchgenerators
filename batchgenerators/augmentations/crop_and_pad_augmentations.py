@@ -14,7 +14,7 @@
 
 from builtins import range
 import numpy as np
-from batchgenerators.augmentations.utils import pad_nd_image
+from batchgenerators.augmentations.utils import pad_nd_image, _slice_array
 
 
 def center_crop(data, crop_size, seg=None):
@@ -49,6 +49,64 @@ def get_lbs_for_center_crop(crop_size, data_shape):
         lbs.append((data_shape[i + 2] - crop_size[i]) // 2)
     return lbs
 
+def get_roi_bbox(seg):
+    ''' Get the bounding coords of ROI.
+    Params:
+        seg: (x,y(,z)) must be the whole thing!
+    Returns:
+        bbox: list of dict. For each axis, return starting and ending position of the bounding box.
+                            For example, bbox[1]['start_pos'] give the starting position for axis 1.
+    '''
+    roi_mask = seg > 0
+    dim = len(seg.shape)
+
+    bbox = []
+    for idx_dim in range(dim):
+        starting_pos = None
+        ending_pos = None
+        for pos in range (roi_mask.shape[idx_dim]):
+            if not np.all(_slice_array(roi_mask, index=pos, axis=idx_dim) ==False):
+                starting_pos = pos
+                break
+        for pos in range (roi_mask.shape[idx_dim]-1, -1, -1):
+            if not np.all(_slice_array(roi_mask, index=pos, axis=idx_dim) ==False):
+                ending_pos = pos
+                break
+        bbox.append({'starting_pos':starting_pos, 'ending_pos':ending_pos})
+
+    return bbox
+
+
+
+def get_lbls_for_roi_crop(crop_size, data_shape, seg):
+    '''Find starting position to center the crop at the ROI in seg.
+    Params:
+        crop_size:   x,y(,z)
+        data_shape: (b,c,x,y(,z)) must be the whole thing!
+        seg:        segmentation target, of shape (x,y(,z)).          
+    '''
+    assert seg is not None, '<crop_roi> shall have NOT none segmentation maps!'
+    lbs = []
+    bbox = get_roi_bbox(seg)
+    for i in range(len(data_shape) - 2):
+        bbox_starting_pos = bbox[i]['starting_pos']
+        bbox_ending_pos = bbox[i]['ending_pos']
+        if bbox_starting_pos is None: # no roi detected
+            return get_lbs_for_center_crop(crop_size, data_shape)
+        else:
+            if abs(bbox_starting_pos) > abs(data_shape[i+2]-bbox_ending_pos):
+                temp_1= min(bbox_starting_pos + crop_size[i], data_shape[i+2]-1) 
+                temp_2 = max(bbox_ending_pos, crop_size[i]-1)
+                end_pos = np.random.randint(min(temp_1, temp_2), max(temp_1, temp_2)+1)
+                # end pos shall be inclusive
+                temp_start_pos = end_pos - crop_size[i] + 1
+            else:
+                temp_1 = max(bbox_ending_pos - crop_size[i] + 1, 0) 
+                temp_2 = min(bbox_starting_pos, data_shape[i+2] - crop_size[i]) 
+                temp_start_pos = np.random.randint(min(temp_1, temp_2), max(temp_1, temp_2)+1)
+
+        lbs.append(temp_start_pos)
+    return lbs
 
 def crop(data, seg=None, crop_size=128, margins=(0, 0, 0), crop_type="center",
          pad_mode='constant', pad_kwargs={'constant_values': 0},
@@ -61,11 +119,11 @@ def crop(data, seg=None, crop_size=128, margins=(0, 0, 0), crop_type="center",
     margin=0 for the appropriate axes
 
     :param data: b, c, x, y(, z)
-    :param seg:
+    :param seg:  b, c, x, y(, z)
     :param crop_size:
     :param margins: distance from each border, can be int or list/tuple of ints (one element for each dimension).
     Can be negative (data/seg will be padded if needed)
-    :param crop_type: random or center
+    :param crop_type: random | center | roi
     :return:
     """
     if not isinstance(data, (list, tuple, np.ndarray)):
@@ -111,6 +169,8 @@ def crop(data, seg=None, crop_size=128, margins=(0, 0, 0), crop_type="center",
             lbs = get_lbs_for_center_crop(crop_size, data_shape_here)
         elif crop_type == "random":
             lbs = get_lbs_for_random_crop(crop_size, data_shape_here, margins)
+        elif crop_type == "roi":
+            lbs = get_lbls_for_roi_crop(crop_size, data_shape_here, seg[b,0])
         else:
             raise NotImplementedError("crop_type must be either center or random")
 

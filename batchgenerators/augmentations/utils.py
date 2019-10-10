@@ -23,6 +23,29 @@ from scipy.ndimage.morphology import grey_dilation
 from skimage.transform import resize
 from scipy.ndimage.measurements import label as lb
 
+def _slice_array(arr, index, axis):
+    '''Helper func to return slicing of specified index along a given axis.
+    '''
+    if len(arr.shape) ==3:
+        if axis == 0:
+            return arr[index]
+        elif axis == 1:
+            return arr[:,index,:]
+        elif axis == 2:
+            return arr[:,:,index]
+        else:
+            raise RuntimeError('Slicing of array not possible as the axis %d requested is exceeds the dimension of data %d.'%(axis+1, len(arr.shape)))
+    elif len(arr.shape) == 2:
+        if axis == 0:
+            return arr[index]
+        elif axis == 1:
+            return arr[:,index]
+        else:
+            raise RuntimeError('Slicing of array not possible as the axis %d requested is exceeds the dimension of data %d.'%(axis+1, len(arr.shape)))
+    else:
+        raise RuntimeError('Slicing of array not possible with the given dimension of data %d.'%(len(arr.shape)))
+
+
 
 def generate_elastic_transform_coordinates(shape, alpha, sigma):
     n_dim = len(shape)
